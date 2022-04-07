@@ -1,4 +1,4 @@
-// YOUR_FULL_NAME_HERE
+// Fedor Sergeev
 package task2
 
 import scala.io.Source
@@ -25,7 +25,7 @@ object Task2 {
     val USER = "USER"
     val nodes_may_fail = 4
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]) = {
     val router: Router = new Router() // Instantiate the router
 
     // Read the overlay adjacency list
@@ -61,7 +61,7 @@ object Task2 {
     println(routerInfo("u7").returnStore)
     println(routerInfo("u8").returnStore)
 
-
+    /*
     /* Crash some nodes*/
     var failing_node = routerInfo("u1")
     var all_keys = failing_node.returnStore.keySet
@@ -79,8 +79,6 @@ object Task2 {
     println(routerInfo("u6").returnStore)
     println(routerInfo("u7").returnStore)
     println(routerInfo("u8").returnStore)
-
-
-
+    */
   }
 }

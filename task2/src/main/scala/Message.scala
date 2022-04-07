@@ -1,4 +1,4 @@
-// YOUR_FULL_NAME_HERE
+// Fedor Sergeev
 package task2
 
 class Message(val source: String, val messageType: String, val data: String = "")

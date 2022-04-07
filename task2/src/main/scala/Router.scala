@@ -1,4 +1,4 @@
-// YOUR_FULL_NAME_HERE
+// Fedor Sergeev
 package task2
 
 class Router() {
@@ -20,7 +20,7 @@ class Router() {
         nodes(to).onReceive(from, message)
     }
 
-    def addNodes(nodeMap: Map[String, Node]) {
+    def addNodes(nodeMap: Map[String, Node]) = {
         /*
          * Adds all the routing information from nodeMap to nodes
          */

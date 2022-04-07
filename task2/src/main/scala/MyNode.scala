@@ -1,8 +1,9 @@
-// YOUR_FULL_NAME_HERE
+// Fedor Sergeev
 package task2
 
 import scala.collection.mutable.Queue
 import scala.collection.mutable.Set
+import scala.util.control.Breaks._
 
 class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router) extends Node(id, memory, neighbours, router) {
     val STORE = "STORE"
@@ -47,7 +48,12 @@ class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router
              * when the key isn't available on the HOST node.
              * Use router.sendMessage(from, to, message) to send a message to another node
              */
-            ???
+            if (response.messageType == RETRIEVE_FAILURE)
+                for (neighbour_id <- neighbours)
+                    if (response.messageType == RETRIEVE_FAILURE && neighbour_id != from) {
+                        response = router.sendMessage(id, neighbour_id, message)
+                        //println(neighbour_id + " " + response.messageType)
+                    }
 
             response // Return the correct response message
         }
@@ -62,10 +68,16 @@ class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router
              */
             val data = message.data.split("->") // data(0) is key, data(1) is value
             val storedOnSelf = setKey(data(0), data(1)) // Store on current node
+
             if (storedOnSelf) {
                 new Message(id, STORE_SUCCESS)
             }
             else {
+                for (neighbour_id <- neighbours)
+                    if (response.messageType == STORE_FAILURE && neighbour_id != from) {
+                        response = router.sendMessage(id, neighbour_id, message)
+                    }
+
                 new Message(id, STORE_FAILURE)
             }
         }

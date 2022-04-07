@@ -1,4 +1,4 @@
-// YOUR_FULL_NAME_HERE
+// Fedor Sergeev
 package task2
 class Node(val id: String, val memory: Int, private val neighbours: Vector[String], router: Router) {
     /*

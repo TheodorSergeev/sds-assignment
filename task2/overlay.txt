@@ -1,7 +1,7 @@
 u1 10 u2 u3
 u2 10 u1
 u3 1 u1 u4
-u4 10 u3 u4 u5
+u4 10 u3 u5
 u5 4 u4 u7
 u6 10 u8
 u7 10 u5 u8
