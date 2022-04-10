@@ -61,7 +61,11 @@ object Task2 {
     println(routerInfo("u7").returnStore)
     println(routerInfo("u8").returnStore)
 
-    /*
+    routerInfo("u1").onReceive(
+      "src", 
+      new Message("src", "STORE", "key1->value1")
+    )
+
     /* Crash some nodes*/
     var failing_node = routerInfo("u1")
     var all_keys = failing_node.returnStore.keySet
@@ -79,6 +83,5 @@ object Task2 {
     println(routerInfo("u6").returnStore)
     println(routerInfo("u7").returnStore)
     println(routerInfo("u8").returnStore)
-    */
   }
 }
