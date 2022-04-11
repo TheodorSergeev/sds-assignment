@@ -22,6 +22,10 @@ class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router
     val BFS_STORE_SUCCESS = "BFS_STORE_SUCCESS"
     val BFS_STORE_FAILURE = "BFS_STORE_FAILURE"
 
+    val BFS_RETRIEVE = "BFS_RETRIEVE"
+    val BFS_RETRIEVE_SUCCESS = "BFS_RETRIEVE_SUCCESS"
+    val BFS_RETRIEVE_FAILURE = "BFS_RETRIEVE_FAILURE"
+
     
     override def onReceive(from: String, message: Message): Message = {
         /* 
@@ -56,7 +60,22 @@ class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router
             new Message(id, NEIGHBOURS_RESPONSE, neighbours.mkString(" "))
         }
 
-        // Request to get the value
+        // Request to read the value from only this node (no traversal)
+        else if (message.messageType == BFS_RETRIEVE) {
+            val key = message.data  // extract key
+            val value = getKey(key) // check if the key is present on the node
+            var response: Message = new Message("", "", "")
+
+            // if succesfull, send the data
+            value match {
+                case Some(i) => response = new Message(id, RETRIEVE_SUCCESS, i)
+                case None => response = new Message(id, RETRIEVE_FAILURE, neighbours.mkString(","))
+            }
+
+            response
+        }
+
+        // Request to read the value from the node with further search (traversal)
         else if (message.messageType == RETRIEVE) { 
             val key = message.data  // extract key
             val value = getKey(key) // check if the key is present on the node
@@ -68,15 +87,35 @@ class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router
             }
             
             // if the key is node on the node, traverse the network to search for it
-            if (response.messageType == RETRIEVE_FAILURE) {
-                for (neighbour_id <- neighbours)
-                    if (response.messageType == RETRIEVE_FAILURE && neighbour_id != from) {
-                        response = router.sendMessage(id, neighbour_id, message)
-                        //println(neighbour_id + " " + response.messageType)
-                    }
+            if (response.messageType == RETRIEVE_FAILURE) {   
+                // variables for BFS - set of visited nodes, and a queue of nodes to visit
+                var visited_nodes = Set[String]()
+                var queued_nodes = Queue[String]()
+
+                visited_nodes.add(id)
+                queued_nodes ++= neighbours
+
+                // traverse while we didn't find the node with the value or didn't run out of nodes to visit
+                while (response.messageType == RETRIEVE_FAILURE && !queued_nodes.isEmpty) {
+                    val new_node = queued_nodes.dequeue()
+
+                    response = router.sendMessage(id, new_node, new Message(id, BFS_RETRIEVE, message.data))
+
+                    if (response.messageType == RETRIEVE_FAILURE) {
+                        val new_neighbours = response.data.split(",") 
+                        val new_unvisited_neighbours = new_neighbours.toSet diff visited_nodes
+
+                        // add current node to visited, update queue with unvisited neighbours of the current node
+                        visited_nodes.add(new_node)
+                        queued_nodes ++= new_unvisited_neighbours
+                    } else 
+                        new Message(id, RETRIEVE_SUCCESS, response.data)
+                }
+            
             }
 
-            response
+            // if retrieved successfully, 
+            new Message(id, RETRIEVE_FAILURE, response.data)
         }
 
         // Request to store the value during the network traversal (attempt write, no backups)
