@@ -184,48 +184,4 @@ class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router
 
         route + " " + str_queued_nodes + " " + str_visited_nodes + " " + n_backup.toString
     }
-
-    /*
-    def onStore(from: String, message: Message) = {
-        // Implement BFS
-
-        // Message format: 
-        //   <source>-><destination> <queue of nodes to visit separated by commas> <set of visited nodes> <backups to make>
-        // Example:
-        //   u1->u2 u1,u2,u3,u4 u5,u6,u7 3
-
-        val data = message.data.split(" ")
-
-        val routing = data(0).split("->")
-        val queued_nodes = Queue(data(1).split(","))
-        val visited_nodes = Set(data(2).split(","))
-
-        var n_backups = data(2).toInt
-
-        // try storing on the current node
-        val storedOnSelf = setKey(routing(0), routing(1)) 
-
-        // decrease todo counter if the write was possible b
-        if (storedOnSelf)
-            backup_num -= 1
-            
-        // if we made all writes that were required => success
-        if (backup_num == 0)
-            new Message(id, STORE_SUCCESS)
-        
-        else
-            // this node has been visited, so add it to the set
-            visited_nodes.add(id)
-            // add neighbors that have not yet been visited to the queue
-            queued_nodes += neighbours diff visited_nodes
-
-            // no more nodes for visit, but more storage is needed => failure
-            if (queued_nodes.isEmpty)
-                new Message(id, STORE_SUCCESS)
-
-            // there are more nodes to visit => do next iteration of BFS
-            else                
-                println("bfs magic")
-    }
-    */
 }
