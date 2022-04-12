@@ -18,13 +18,10 @@ class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router
     val USER = "USER"
     val nodes_may_fail = 4
 
+    // auxiliary message type for traversal of nodes
+    // (used while traversing to request store/retrieve without traversal)
     val BFS_STORE = "BFS_STORE"
-    val BFS_STORE_SUCCESS = "BFS_STORE_SUCCESS"
-    val BFS_STORE_FAILURE = "BFS_STORE_FAILURE"
-
     val BFS_RETRIEVE = "BFS_RETRIEVE"
-    val BFS_RETRIEVE_SUCCESS = "BFS_RETRIEVE_SUCCESS"
-    val BFS_RETRIEVE_FAILURE = "BFS_RETRIEVE_FAILURE"
 
     
     override def onReceive(from: String, message: Message): Message = {
@@ -102,20 +99,22 @@ class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router
                     response = router.sendMessage(id, new_node, new Message(id, BFS_RETRIEVE, message.data))
 
                     if (response.messageType == RETRIEVE_FAILURE) {
-                        val new_neighbours = response.data.split(",") 
-                        val new_unvisited_neighbours = new_neighbours.toSet diff visited_nodes
+                        val new_neighbours = response.data.split(",").toSet
+                        // nodes to add the queue
+                        // neighbors that were not visited and are not already in the queue
+                        // todo: can this be made more efficiently?
+                        val new_unvisited_neighbours = new_neighbours diff visited_nodes diff queued_nodes.toSet
 
                         // add current node to visited, update queue with unvisited neighbours of the current node
                         visited_nodes.add(new_node)
                         queued_nodes ++= new_unvisited_neighbours
                     } else 
-                        new Message(id, RETRIEVE_SUCCESS, response.data)
+                        response = new Message(id, RETRIEVE_SUCCESS, response.data)
                 }
             
             }
 
-            // if retrieved successfully, 
-            new Message(id, RETRIEVE_FAILURE, response.data)
+            response
         }
 
         // Request to store the value during the network traversal (attempt write, no backups)
@@ -125,9 +124,9 @@ class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router
             val str_neighbours = neighbours.mkString(",")
             
             if (storedOnSelf)
-                new Message(id, BFS_STORE_SUCCESS, str_neighbours)
+                new Message(id, STORE_SUCCESS, str_neighbours)
             else 
-                new Message(id, BFS_STORE_FAILURE, str_neighbours)
+                new Message(id, STORE_FAILURE, str_neighbours)
         } 
 
         // Request to store the value assuming fault-tolerance
@@ -149,28 +148,30 @@ class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router
             while (n_backups > 0 && !queued_nodes.isEmpty) {
                 val new_node = queued_nodes.dequeue()
 
-                val response = router.sendMessage(id, new_node, new Message(id, BFS_STORE, message.data))
-                val new_neighbours = response.data.split(",") 
-                val new_unvisited_neighbours = new_neighbours.toSet diff visited_nodes
-
-                // add current node to visited, update queue with unvisited neighbours of the current node
+                // add current node to visited
                 visited_nodes.add(new_node)
+
+                val response = router.sendMessage(id, new_node, new Message(id, BFS_STORE, message.data))
+                val new_neighbours = response.data.split(",").toSet
+
+                // nodes to add the queue
+                // neighbors that were not visited and are not already in the queue
+                // todo: can this be made more efficiently?
+                val new_unvisited_neighbours = new_neighbours diff visited_nodes diff queued_nodes.toSet
+                
+                // update queue with unvisited neighbours of the current node
                 queued_nodes ++= new_unvisited_neighbours
 
                 // reduce the number of writes todo if successful
-                if (response.messageType == BFS_STORE_SUCCESS)
+                if (response.messageType == STORE_SUCCESS)
                     n_backups -= 1
-                else if (response.messageType == BFS_STORE_FAILURE)
-                    n_backups -= 0
-                else 
-                    new Message(id, INTERNAL_ERROR)
             }
 
             // check task completion
             if (n_backups == 0)
                 new Message(id, STORE_SUCCESS) // stored all copies in the network
             else
-                new Message(id, STORE_FAILURE) // out of storage for making enough copies
+                new Message(id, STORE_FAILURE) // out of storage for making enough copies (==incorrect querry)
         }
 
         // Handle unknown requests
@@ -184,4 +185,68 @@ class MyNode(id: String, memory: Int, neighbours: Vector[String], router: Router
 
         route + " " + str_queued_nodes + " " + str_visited_nodes + " " + n_backup.toString
     }
+
+/* My Tesing 
+
+Network graph (replace overlay.txt)
+    u1 1 u2 u3
+    u2 9 u1 u3 u4
+    u3 9 u1 u2 u5 u6
+    u4 9 u2
+    u5 9 u3
+    u6 9 u3
+
+Queries (add to Task2.scala instead of the default queries)
+    // Helper function (print current storage of nodes)
+    def print_nodes() = {
+      val nodes_ids = List[String]("u1", "u2", "u3", "u4", "u5", "u6")
+      for (id <- nodes_ids)
+        println (id + " " + routerInfo(id).returnStore)
+    }
+
+    // Helper function (print message type and data)
+    def print_msg(msg: Message) = println(msg.messageType + " " + msg.data)
+
+    // Helper function (crash a node aka delete all store key-value pairs)
+    def crash_node(id: String) = {
+      var failing_node = routerInfo(id)
+      var all_keys = failing_node.returnStore.keySet
+      all_keys.foreach { failing_node.removeKey }
+    }
+
+
+    // Check direct store (enough space on in the querried node)
+    println("\nCheck direct store")
+    var m = router.sendMessage(USER, "u1", new Message(USER, STORE, "key1->value1"))
+    print_msg(m)
+    print_nodes()
+
+    // Check indirect store (not nough space on in the querried node)
+    println("\nCheck indirect store")
+    m = router.sendMessage(USER, "u1", new Message(USER, STORE, "key2->value2"))
+    print_msg(m)
+    print_nodes()
+
+    // Check direct retrieve (value is present in the querried node)
+    println("\nCheck direct retrieve")
+    m = router.sendMessage(USER, "u1", new Message(USER, RETRIEVE, "key1"))
+    print_msg(m)
+
+    // Check indirect retrieve (value is not present in the querried node)
+    println("\nCheck indirect retrieve")
+    m = router.sendMessage(USER, "u6", new Message(USER, RETRIEVE, "key1"))
+    print_msg(m)
+
+    // Simulate crashing 
+    println("\nSimulate worst-case crashing")
+    crash_node("u1") 
+    crash_node("u3") 
+    crash_node("u4") 
+    crash_node("u5")
+    print_nodes()
+    m = router.sendMessage(USER, "u4", new Message(USER, RETRIEVE, "key1"))
+    print_msg(m)
+    m = router.sendMessage(USER, "u4", new Message(USER, RETRIEVE, "key2"))
+    print_msg(m)
+*/
 }

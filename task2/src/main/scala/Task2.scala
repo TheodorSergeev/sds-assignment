@@ -25,7 +25,7 @@ object Task2 {
     val USER = "USER"
     val nodes_may_fail = 4
 
-  def main(args: Array[String]) = {
+  def main(args: Array[String]) {
     val router: Router = new Router() // Instantiate the router
 
     // Read the overlay adjacency list
@@ -61,10 +61,6 @@ object Task2 {
     println(routerInfo("u7").returnStore)
     println(routerInfo("u8").returnStore)
 
-    routerInfo("u1").onReceive(
-      "src", 
-      new Message("src", "STORE", "key1->value1")
-    )
 
     /* Crash some nodes*/
     var failing_node = routerInfo("u1")
